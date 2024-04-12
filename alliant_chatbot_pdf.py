@@ -71,16 +71,17 @@ def process_pdf(uploaded_file):
 
 def generate_answer():
     tokenizer, model = get_models()
-    user_message = st.session_state.input_text
+    input_text = st.session_state.input_text or ""
+    additional_input_text = st.session_state.additional_input_text or ""
     pdf_text = st.session_state.pdf_text
 
-    combined_message = user_message.strip() + " " + pdf_text.strip() if pdf_text else user_message.strip()
+    combined_message = (input_text.strip() + " " + additional_input_text.strip() + " " + pdf_text.strip()).strip() if pdf_text else (input_text.strip() + " " + additional_input_text.strip()).strip()
 
     inputs = tokenizer(combined_message, return_tensors="pt")
     result = model.generate(**inputs)
     message_bot = tokenizer.decode(result[0], skip_special_tokens=True)
 
-    st.session_state.history.append({"message": user_message, "is_user": True})
+    st.session_state.history.append({"message": input_text, "is_user": True})
     st.session_state.history.append({"message": message_bot, "is_user": False})
 
 uploaded_file = st.file_uploader("Upload PDF file", type=['pdf'])
@@ -90,7 +91,8 @@ if uploaded_file is not None:
     pdf_text = process_pdf(uploaded_file)  # You need to implement the process_pdf function
     st.session_state.pdf_text = pdf_text
 
-st.text_input("", key="input_text", on_change=generate_answer)
+st.text_input("Enter the subject of your message here", max_chars=100, key="input_text", on_change=generate_answer)
+st.text_area("Enter your message body here", height=200, key="additional_input_text", on_change=generate_answer)
 
 for i, chat in enumerate(st.session_state.history):
     st_message(**chat, key=str(i)) #unpacking
