@@ -1,0 +1,14 @@
+conda create --name streamlit_env2 python=3.9
+conda install -n streamlit_env2 pip
+source activate streamlit_env2
+
+pip install streamlit
+pip install streamlit-chat
+pip install transformers
+pip install pymupdf
+pip install frontend
+pip install openai==0.28.1
+conda install pytorch torchvision torchaudio -c pytorch
+pip install chardet
+pip install faiss-cpu
+
