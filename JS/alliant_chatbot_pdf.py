@@ -11,9 +11,13 @@ import os
 import fitz  # PyMuPDF
 import re
 import openai
+import textwrap
+from transformers import BartTokenizer, BartForConditionalGeneration
+
 from AMU_module import embedding as ed
 from AMU_module import semantic_search as ss
 from AMU_module import llm_generation as lg
+from AMU_module import summarize as su
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True' # Handling Error #15: Initializing libomp.dylib, but found libiomp5.dylib already initialized.
 
@@ -53,6 +57,9 @@ best_of = 1
 batch_size = 10
 params = (temperature, max_tokens, top_p, frequency_penalty, presence_penalty, best_of, batch_size)
 
+# Max context window
+max_context_window = 3500
+
 system_msg = '''
                 You are an email generator for a title insurance attorney. 
                 Please craft a response to the incoming email by drawing inspiration from past inquiries and replies. 
@@ -83,7 +90,7 @@ def process_pdf(uploaded_file):
     pdf_text = ""
     try:
         # Save the uploaded file to a temporary location
-        temp_file_path = os.path.join("C:\\Users\\Debrup Basu\\Downloads", uploaded_file.name)
+        temp_file_path = os.path.join("./", uploaded_file.name)
         with open(temp_file_path, "wb") as temp_file:
             temp_file.write(uploaded_file.getvalue())
 
@@ -116,6 +123,15 @@ def generate_answer():
     pdf_text = "No Attachments" if len(pdf_text)==0 or pdf_text is None else pdf_text
     subject_text = "No Subjects" if len(subject_text)==0 or subject_text is None else subject_text
 
+    print(len(pdf_text))
+
+    if len(pdf_text)>max_context_window: # If the length of pdf is too long
+        print('Summarize pdf')
+        print('Before: ' + str(len(pdf_text)))
+        pdf_text = su.summarize(pdf_text)
+        print('After: ' + str(len(pdf_text)))
+
+
     # Trasform text into its embedding representation
     body_emb = ed.embedding(body_text, api_key)
     pdf_emb = ed.embedding(pdf_text, api_key)
@@ -123,8 +139,6 @@ def generate_answer():
 
     # Retrieve similar email idxes
     sim_idx, sim_subject, sim_body, sim_attachment, sim_response = ss.semantic_search_module('data/embedding_results_v3.csv', subject_emb, body_emb, pdf_emb, K=1)
-    print(subject_emb)
-    print(sim_idx)
     
     # LLM generation
     incoming_email = (subject_text, body_text, pdf_text)
